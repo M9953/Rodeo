@@ -82,9 +82,6 @@
 
       // app source (embedded, never needs network)
       var appSrc = `
-  const { useState, useEffect, useRef } = React;
-
-
 
 // ── Storage helpers ──────────────────────────────────────────────────────────
 const STORE_KEY = "wws_data_v1";
@@ -396,6 +393,10 @@ function Dashboard({ data, setTab }) {
                       <div>
                         <div style={{ fontWeight: 700, fontSize: 14, color: C.navy }}>{o.id}</div>
                         <div style={{ fontSize: 13, color: C.textSub, marginTop: 2 }}>{cust?.name || "—"}</div>
+                        {(() => {
+                          const ag = cust && cust.agentId ? data.agents.find(a => a.id === cust.agentId) : null;
+                          return ag ? <div style={{ fontSize: 12, color: C.sunset, fontWeight: 700, marginTop: 2 }}>🤝 {ag.name}</div> : null;
+                        })()}
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <div style={{ fontWeight: 700, color: C.navy }}>{fmt(o.total || 0)}</div>
@@ -505,7 +506,7 @@ function Products({ data, setData }) {
   const cats = (data.categories && Object.keys(data.categories).length > 0) ? data.categories : DEFAULT_CATEGORIES;
   const categoryNames = Object.keys(cats);
   const brandsForCat = (cat) => cats[cat] || [];
-  const [form, setForm] = useState({ name: "", price: "", category: "", brand: "", description: "", photo: "", variants: [] });
+  const [form, setForm] = useState({ name: "", price: "", ek: "", category: "", brand: "", description: "", photo: "", variants: [] });
   const fileRef = useRef();
   const variantRef = useRef();
 
@@ -517,7 +518,7 @@ function Products({ data, setData }) {
     return matchSearch && matchCat;
   });
 
-  const openNew = () => { setForm({ name: "", price: "", category: "", brand: "", description: "", photo: "", variants: [] }); setModal("new"); };
+  const openNew = () => { setForm({ name: "", price: "", ek: "", category: "", brand: "", description: "", photo: "", variants: [] }); setModal("new"); };
   const openEdit = (p) => { setForm({ variants: [], ...p }); setModal(p); };
 
   const [imgBusy, setImgBusy] = useState(false);
@@ -555,10 +556,10 @@ function Products({ data, setData }) {
       let products;
       if (modal === "new") {
         const id = \`PR-\${String(d.nextId.product).padStart(4, "0")}\`;
-        products = [...d.products, { ...form, id, price: parseFloat(form.price) || 0 }];
+        products = [...d.products, { ...form, id, price: parseFloat(form.price) || 0, ek: parseFloat(form.ek) || 0 }];
         return { ...d, products, nextId: { ...d.nextId, product: d.nextId.product + 1 } };
       } else {
-        products = d.products.map(p => p.id === modal.id ? { ...p, ...form, price: parseFloat(form.price) || 0 } : p);
+        products = d.products.map(p => p.id === modal.id ? { ...p, ...form, price: parseFloat(form.price) || 0, ek: parseFloat(form.ek) || 0 } : p);
         return { ...d, products };
       }
     });
@@ -626,7 +627,8 @@ function Products({ data, setData }) {
               Noch keine Marken für „{form.category}". In den Einstellungen → Kategorien & Marken hinzufügen.
             </div>
           )}
-          <Field form={form} setForm={setForm} k="price" label="Preis (€)" type="number" step="0.01" min="0" />
+          <Field form={form} setForm={setForm} k="ek" label="Einkaufspreis EK (€)" type="number" step="0.01" min="0" />
+          <Field form={form} setForm={setForm} k="price" label="Verkaufspreis (€)" type="number" step="0.01" min="0" />
           <Field form={form} setForm={setForm} k="description" label="Beschreibung" />
 
           {/* Main photo */}
@@ -675,7 +677,7 @@ function Orders({ data, setData }) {
   const [filterShip, setFilterShip] = useState("all");
   const [filterPay, setFilterPay] = useState("all");
   const [form, setForm] = useState({
-    customerId: "", date: today(), shipStatus: "ontheway", payStatus: "unpaid",
+    customerId: "", date: today(), shipStatus: "ontheway", payStatus: "unpaid", paidAmount: 0,
     items: [], notes: "", trackingCode: "",
   });
   const [itemProd, setItemProd] = useState("");
@@ -683,6 +685,19 @@ function Orders({ data, setData }) {
   const [itemEk, setItemEk] = useState("");
   const [itemAgent, setItemAgent] = useState("");
   const [itemCustomer, setItemCustomer] = useState("");
+
+  // Does the currently chosen customer come via an agent?
+  const selCustomer = data.customers.find(c => c.id === form.customerId);
+  const customerHasAgent = !!(selCustomer && selCustomer.agentId);
+
+  // When a product is picked, auto-fill EK (and propose selling price) from the article.
+  const onPickProduct = (pid) => {
+    setItemProd(pid);
+    const prod = data.products.find(p => p.id === pid);
+    if (prod) {
+      setItemEk(prod.ek != null && prod.ek !== 0 ? String(prod.ek) : "");
+    }
+  };
 
   const filtered = data.orders.filter(o => {
     const cust = data.customers.find(c => c.id === o.customerId);
@@ -701,13 +716,13 @@ function Orders({ data, setData }) {
   const agentMargin = (items) => sumCustomer(items) - sumAgent(items); // agent's profit
 
   const openNew = () => {
-    setForm({ customerId: data.customers[0]?.id || "", date: today(), shipStatus: "ontheway", payStatus: "unpaid", items: [], notes: "", trackingCode: "" });
+    setForm({ customerId: data.customers[0]?.id || "", date: today(), shipStatus: "ontheway", payStatus: "unpaid", paidAmount: 0, items: [], notes: "", trackingCode: "" });
     setItemProd(data.products[0]?.id || "");
     setItemQty("1");
     setItemEk(""); setItemAgent(""); setItemCustomer("");
     setModal("new");
   };
-  const openEdit = (o) => { setForm({ ...o }); setModal(o); };
+  const openEdit = (o) => { setForm({ paidAmount: 0, ...o }); setModal(o); };
 
   const addItem = () => {
     const prod = data.products.find(p => p.id === itemProd);
@@ -731,12 +746,17 @@ function Orders({ data, setData }) {
   const save = () => {
     setData(d => {
       const total = calcTotal(form.items);
+      // keep paidAmount consistent with status
+      let paidAmount = form.paidAmount || 0;
+      if (form.payStatus === "paid") paidAmount = total;       // fully paid = full total
+      if (form.payStatus === "unpaid") paidAmount = 0;
+      const clean = { ...form, paidAmount };
       if (modal === "new") {
         const id = \`AU-\${String(d.nextId.order).padStart(4, "0")}\`;
-        const orders = [...d.orders, { ...form, id, total }];
+        const orders = [...d.orders, { ...clean, id, total }];
         return { ...d, orders, nextId: { ...d.nextId, order: d.nextId.order + 1 } };
       } else {
-        const orders = d.orders.map(o => o.id === modal.id ? { ...o, ...form, total } : o);
+        const orders = d.orders.map(o => o.id === modal.id ? { ...o, ...clean, total } : o);
         return { ...d, orders };
       }
     });
@@ -785,7 +805,13 @@ function Orders({ data, setData }) {
                 <div style={{ fontWeight: 700, color: C.navy }}>{o.id}</div>
                 <div style={{ fontSize: 13, color: C.textSub }}>{o.date}</div>
               </div>
-              <div style={{ fontWeight: 600, marginBottom: 6 }}>{cust?.name || "—"}</div>
+              <div style={{ fontWeight: 600, marginBottom: 2 }}>{cust?.name || "—"}</div>
+              {(() => {
+                const ag = cust && cust.agentId ? data.agents.find(a => a.id === cust.agentId) : null;
+                return ag
+                  ? <div style={{ fontSize: 13, color: C.sunset, fontWeight: 700, marginBottom: 6 }}>🤝 {ag.name}</div>
+                  : <div style={{ fontSize: 12, color: C.textSub, marginBottom: 6 }}>Direktkunde (kein Agent)</div>;
+              })()}
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
                 <Badge label={ship.label} color={ship.color} />
                 <Badge label={pay.label} color={pay.color} />
@@ -794,6 +820,11 @@ function Orders({ data, setData }) {
                 <div style={{ fontSize: 13, color: C.textSub }}>{o.items?.length || 0} Positionen</div>
                 <div style={{ fontWeight: 700, fontSize: 16, color: C.navy }}>{fmt(o.total || 0)}</div>
               </div>
+              {o.payStatus === "partial" && (
+                <div style={{ fontSize: 12, color: C.red, fontWeight: 600, marginTop: 4 }}>
+                  Gezahlt: {fmt(o.paidAmount || 0)} · Offen: {fmt(Math.max(0, (o.total || 0) - (o.paidAmount || 0)))}
+                </div>
+              )}
               {o.trackingCode && <div style={{ fontSize: 12, color: C.textSub, marginTop: 6 }}>📦 {o.trackingCode}</div>}
             </div>
           </Card>
@@ -830,17 +861,19 @@ function Orders({ data, setData }) {
 
             {/* Add-item form */}
             <div style={{ background: C.amberLight, borderRadius: 10, padding: "10px 12px", marginTop: 4 }}>
-              <Select value={itemProd} onChange={setItemProd}>
+              <Select value={itemProd} onChange={onPickProduct}>
                 {data.products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </Select>
               <div style={{ display: "flex", gap: 8 }}>
                 <div style={{ flex: 1 }}><Input label="Menge" type="number" value={itemQty} onChange={setItemQty} min="1" /></div>
                 <div style={{ flex: 1 }}><Input label="EK (€)" type="number" step="0.01" value={itemEk} onChange={setItemEk} placeholder="0,00" /></div>
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <div style={{ flex: 1 }}><Input label="Preis an Agent (€)" type="number" step="0.01" value={itemAgent} onChange={setItemAgent} placeholder="0,00" /></div>
-                <div style={{ flex: 1 }}><Input label="Agent → Kunde (€)" type="number" step="0.01" value={itemCustomer} onChange={setItemCustomer} placeholder="0,00" /></div>
-              </div>
+              {customerHasAgent && (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <div style={{ flex: 1 }}><Input label="Preis an Agent (€)" type="number" step="0.01" value={itemAgent} onChange={setItemAgent} placeholder="0,00" /></div>
+                  <div style={{ flex: 1 }}><Input label="Agent → Kunde (€)" type="number" step="0.01" value={itemCustomer} onChange={setItemCustomer} placeholder="0,00" /></div>
+                </div>
+              )}
               <Btn small full onClick={addItem}>＋ Position hinzufügen</Btn>
             </div>
 
@@ -868,9 +901,32 @@ function Orders({ data, setData }) {
           <Select label="Sendestatus" value={form.shipStatus} onChange={v => setForm(f => ({ ...f, shipStatus: v }))}>
             {SHIP_STATUS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </Select>
-          <Select label="Zahlungsstatus" value={form.payStatus} onChange={v => setForm(f => ({ ...f, payStatus: v }))}>
+          <Select label="Zahlungsstatus" value={form.payStatus} onChange={v => {
+            const total = calcTotal(form.items);
+            setForm(f => {
+              if (v === "paid") return { ...f, payStatus: v, paidAmount: total };       // full amount, no question
+              if (v === "unpaid") return { ...f, payStatus: v, paidAmount: 0 };
+              return { ...f, payStatus: v };                                              // partial -> ask below
+            });
+          }}>
             {PAY_STATUS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </Select>
+
+          {form.payStatus === "partial" && (
+            <div style={{ background: C.amberLight, borderRadius: 10, padding: "10px 12px", marginBottom: 14 }}>
+              <Input
+                label="Bereits gezahlter Betrag (€)"
+                type="number" step="0.01" min="0"
+                value={form.paidAmount || ""}
+                onChange={v => setForm(f => ({ ...f, paidAmount: parseFloat(String(v).replace(",", ".")) || 0 }))}
+                placeholder="0,00"
+              />
+              <div style={{ fontSize: 13, color: C.textSub, marginTop: 2 }}>
+                Offen: <span style={{ fontWeight: 700, color: C.red }}>{fmt(Math.max(0, calcTotal(form.items) - (form.paidAmount || 0)))}</span>
+                {"  von "}{fmt(calcTotal(form.items))}
+              </div>
+            </div>
+          )}
           <Input label="Tracking-Code" value={form.trackingCode || ""} onChange={v => setForm(f => ({ ...f, trackingCode: v }))} placeholder="z.B. 1Z999AA1…" />
           <Input label="Notizen" value={form.notes || ""} onChange={v => setForm(f => ({ ...f, notes: v }))} />
 
@@ -1312,16 +1368,6 @@ function App() {
     </div>
   );
 }
-
-
-  try {
-    const rootEl = document.getElementById("root");
-    ReactDOM.createRoot(rootEl).render(<App />);
-    window.__rendered = true;
-    var b = document.getElementById('boot'); if (b) b.style.display='none';
-  } catch (e) {
-    showErr('Render: ' + (e && e.message ? e.message : e));
-  }
 `;
       var out = Babel.transform(appSrc, { presets:['react'] }).code;
       runScript(out);
