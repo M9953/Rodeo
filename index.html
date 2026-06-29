@@ -82,6 +82,7 @@
 
       // app source (embedded, never needs network)
       var appSrc = `
+const { useState, useEffect, useRef } = React;
 
 // ── Storage helpers ──────────────────────────────────────────────────────────
 const STORE_KEY = "wws_data_v1";
