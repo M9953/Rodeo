@@ -559,29 +559,6 @@ function Customers({ data, setData }) {
         </Modal>
       )}
 
-      {/* Fullscreen image viewer */}
-      {lightbox && (
-        <div onClick={() => setLightbox(null)} style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,.92)", zIndex: 200,
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        }}>
-          <img src={lightbox.images[lightbox.idx]} alt="" style={{ maxWidth: "94%", maxHeight: "80%", objectFit: "contain", borderRadius: 10 }} />
-          {lightbox.images.length > 1 && (
-            <div style={{ display: "flex", gap: 8, marginTop: 16 }} onClick={e => e.stopPropagation()}>
-              {lightbox.images.map((img, i) => (
-                <img key={i} src={img} alt="" onClick={() => setLightbox(l => ({ ...l, idx: i }))} style={{
-                  width: 48, height: 48, objectFit: "cover", borderRadius: 8,
-                  border: i === lightbox.idx ? \`2px solid \${C.sunset}\` : "2px solid transparent", opacity: i === lightbox.idx ? 1 : .6,
-                }} />
-              ))}
-            </div>
-          )}
-          <button onClick={() => setLightbox(null)} style={{
-            position: "absolute", top: 20, right: 20, background: "rgba(255,255,255,.15)", color: "#fff",
-            border: "none", borderRadius: "50%", width: 40, height: 40, fontSize: 22, cursor: "pointer",
-          }}>×</button>
-        </div>
-      )}
     </div>
   );
 }
@@ -828,6 +805,30 @@ function Products({ data, setData }) {
           <Btn full onClick={save}>{modal === "new" ? "Anlegen" : "Speichern"}</Btn>
           {modal !== "new" && <div style={{ marginTop: 10 }}><Btn full danger onClick={() => del(modal.id)}>Löschen</Btn></div>}
         </Modal>
+      )}
+
+      {/* Fullscreen image viewer */}
+      {lightbox && (
+        <div onClick={() => setLightbox(null)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.92)", zIndex: 200,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        }}>
+          <img src={lightbox.images[lightbox.idx]} alt="" style={{ maxWidth: "94%", maxHeight: "80%", objectFit: "contain", borderRadius: 10 }} />
+          {lightbox.images.length > 1 && (
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }} onClick={e => e.stopPropagation()}>
+              {lightbox.images.map((img, i) => (
+                <img key={i} src={img} alt="" onClick={() => setLightbox(l => ({ ...l, idx: i }))} style={{
+                  width: 48, height: 48, objectFit: "cover", borderRadius: 8,
+                  border: i === lightbox.idx ? \`2px solid \${C.sunset}\` : "2px solid transparent", opacity: i === lightbox.idx ? 1 : .6,
+                }} />
+              ))}
+            </div>
+          )}
+          <button onClick={() => setLightbox(null)} style={{
+            position: "absolute", top: 20, right: 20, background: "rgba(255,255,255,.15)", color: "#fff",
+            border: "none", borderRadius: "50%", width: 40, height: 40, fontSize: 22, cursor: "pointer",
+          }}>×</button>
+        </div>
       )}
     </div>
   );
