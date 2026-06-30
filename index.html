@@ -135,14 +135,13 @@ const supportsDirPicker = () => typeof window !== "undefined" && "showDirectoryP
 
 // ── Defaults ─────────────────────────────────────────────────────────────────
 const DEFAULT_CATEGORIES = {
-  "Schuhe": ["Nike", "Adidas", "New Balance"],
-  "Taschen": ["Louis Vuitton", "Gucci", "Prada"],
-  "Jacken": ["Moncler", "Stone Island", "The North Face"],
-  "Westen": [],
-  "Pullover": [],
-  "Uhren": ["Rolex", "Omega", "Audemars Piguet"],
-  "Gürtel": ["Gucci", "Louis Vuitton", "Hermès"],
-  "Sonstiges": [],
+  "Schuhe": ["Nike", "Balenciaga", "Louis Vuitton", "Gucci", "Dior", "Hermès", "Prada", "Loro Piana", "Christian Louboutin"],
+  "Taschen": ["Louis Vuitton", "Gucci", "Prada", "MCM", "Hermès", "Dior", "Goyard", "Chanel"],
+  "Jacken": ["Moncler", "Canada Goose", "Burberry"],
+  "Westen": ["Moncler", "Canada Goose"],
+  "Pullover": ["Louis Vuitton", "Gucci", "Dior"],
+  "Uhren": ["Rolex", "Audemars Piguet", "Omega", "Patek Philippe", "Vacheron Constantin", "Cartier"],
+  "Gürtel": ["Gucci", "Hermès", "Louis Vuitton"],
 };
 
 const defaultData = () => ({
@@ -151,6 +150,7 @@ const defaultData = () => ({
   orders: [],
   agents: [],
   categories: { ...DEFAULT_CATEGORIES },
+  catVersion: 2,
   nextId: { customer: 1, product: 1, order: 1, agent: 1 },
 });
 
@@ -298,6 +298,36 @@ const Modal = ({ title, onClose, children }) => (
 );
 
 // ── Nav icons (SVG inline) ────────────────────────────────────────────────────
+// Category logos — line-art symbols in the Rodeo Drive sunset style (circular sunset badge + white icon)
+const CategoryIcon = ({ name, size = 56 }) => {
+  const symbols = {
+    "Schuhe": <path d="M3 16h13l4-2c1-.5 1.5-1.5 1-2.5-.4-.8-1.2-1-2-.8l-5 1.2-4-4.4c-.4-.4-1-.5-1.4-.2-.5.3-.6.9-.4 1.4L9 12l-6 1v3z" />,
+    "Taschen": <><path d="M5 9h14l-1.2 10.5c-.1.9-.8 1.5-1.7 1.5H7.9c-.9 0-1.6-.6-1.7-1.5L5 9z" /><path d="M9 9V7a3 3 0 016 0v2" /></>,
+    "Jacken": <><path d="M8 4l4 3 4-3 4 2-2 5v9H6v-9L4 6z" /><path d="M12 7v14" /></>,
+    "Westen": <><path d="M8 4l4 3 4-3 3 2-1.5 4.5V21H6.5V10.5L5 6z" /><path d="M12 7v14" /></>,
+    "Pullover": <><path d="M7 6l5-2 5 2 4 3-2.5 3L17 11v9H7v-9l-1.5 1L3 9z" /></>,
+    "Uhren": <><circle cx="12" cy="12" r="5.5" /><path d="M12 9.5V12l1.8 1.2M9 4.5h6M9 19.5h6" /></>,
+    "Gürtel": <><path d="M3 10h18v4H3z" /><rect x="9.5" y="8.5" width="5" height="7" rx="1" /><path d="M12 10.5v3" /></>,
+  };
+  const sym = symbols[name] || <path d="M4 7h16v12H4zM4 7l8 6 8-6" />;
+  const id = "g" + name.replace(/[^a-zA-Z]/g, "");
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#3B2A52" />
+          <stop offset="55%" stopColor="#6A3F6B" />
+          <stop offset="100%" stopColor="#C8682E" />
+        </linearGradient>
+      </defs>
+      <circle cx="12" cy="12" r="12" fill={\`url(#\${id})\`} />
+      <g fill="none" stroke="#FBE7C8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" transform="translate(2.4 2.4) scale(0.8)">
+        {sym}
+      </g>
+    </svg>
+  );
+};
+
 const Icon = ({ name, size = 22, color = "currentColor" }) => {
   const paths = {
     home: "M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z",
@@ -495,6 +525,30 @@ function Customers({ data, setData }) {
           {modal !== "new" && <div style={{ marginTop: 10 }}><Btn full danger onClick={() => del(modal.id)}>Löschen</Btn></div>}
         </Modal>
       )}
+
+      {/* Fullscreen image viewer */}
+      {lightbox && (
+        <div onClick={() => setLightbox(null)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.92)", zIndex: 200,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        }}>
+          <img src={lightbox.images[lightbox.idx]} alt="" style={{ maxWidth: "94%", maxHeight: "80%", objectFit: "contain", borderRadius: 10 }} />
+          {lightbox.images.length > 1 && (
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }} onClick={e => e.stopPropagation()}>
+              {lightbox.images.map((img, i) => (
+                <img key={i} src={img} alt="" onClick={() => setLightbox(l => ({ ...l, idx: i }))} style={{
+                  width: 48, height: 48, objectFit: "cover", borderRadius: 8,
+                  border: i === lightbox.idx ? \`2px solid \${C.sunset}\` : "2px solid transparent", opacity: i === lightbox.idx ? 1 : .6,
+                }} />
+              ))}
+            </div>
+          )}
+          <button onClick={() => setLightbox(null)} style={{
+            position: "absolute", top: 20, right: 20, background: "rgba(255,255,255,.15)", color: "#fff",
+            border: "none", borderRadius: "50%", width: 40, height: 40, fontSize: 22, cursor: "pointer",
+          }}>×</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -503,7 +557,9 @@ function Customers({ data, setData }) {
 function Products({ data, setData }) {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState(null);
-  const [catFilter, setCatFilter] = useState("all");
+  const [navCat, setNavCat] = useState(null);    // selected category (level 2)
+  const [navBrand, setNavBrand] = useState(null); // selected brand (level 3)
+  const [lightbox, setLightbox] = useState(null); // {images:[...], idx} or null
   const cats = (data.categories && Object.keys(data.categories).length > 0) ? data.categories : DEFAULT_CATEGORIES;
   const categoryNames = Object.keys(cats);
   const brandsForCat = (cat) => cats[cat] || [];
@@ -511,15 +567,7 @@ function Products({ data, setData }) {
   const fileRef = useRef();
   const variantRef = useRef();
 
-  const filtered = data.products.filter(p => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.category?.toLowerCase().includes(search.toLowerCase()) ||
-      p.brand?.toLowerCase().includes(search.toLowerCase());
-    const matchCat = catFilter === "all" || p.category === catFilter;
-    return matchSearch && matchCat;
-  });
-
-  const openNew = () => { setForm({ name: "", price: "", ek: "", category: "", brand: "", description: "", photo: "", variants: [] }); setModal("new"); };
+  const openNew = () => { setForm({ name: "", price: "", ek: "", category: navCat || "", brand: navBrand || "", description: "", photo: "", variants: [] }); setModal("new"); };
   const openEdit = (p) => { setForm({ variants: [], ...p }); setModal(p); };
 
   const [imgBusy, setImgBusy] = useState(false);
@@ -573,47 +621,123 @@ function Products({ data, setData }) {
     setModal(null);
   };
 
+  // Counts for tree levels
+  const productsIn = (cat, brand) => data.products.filter(p =>
+    p.category === cat && (brand == null || p.brand === brand)
+  );
+  const sortedBrands = (cat) => [...brandsForCat(cat)].sort((a, b) => a.localeCompare(b, "de"));
+  const sortedCats = [...categoryNames].sort((a, b) => a.localeCompare(b, "de"));
+
+  // Global search overrides the tree
+  const searching = search.trim().length > 0;
+  const searchResults = data.products.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    p.category?.toLowerCase().includes(search.toLowerCase()) ||
+    p.brand?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const ProductRow = (p) => (
+    <Card key={p.id} style={{ cursor: "pointer" }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        {p.photo
+          ? <img src={p.photo} alt="" onClick={() => setLightbox({ images: [p.photo, ...(p.variants || [])], idx: 0 })}
+              style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
+          : <div onClick={() => openEdit(p)} style={{ width: 56, height: 56, borderRadius: 10, background: C.blueLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>📦</div>}
+        <div style={{ flex: 1, minWidth: 0 }} onClick={() => openEdit(p)}>
+          <div style={{ fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+          {p.description && <div style={{ fontSize: 12, color: C.textSub, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.description}</div>}
+          <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "baseline", flexWrap: "wrap" }}>
+            <span style={{ fontWeight: 700, color: C.blue, fontSize: 15 }}>{fmt(p.price)}</span>
+            {p.ek != null && p.ek > 0 && <span style={{ fontSize: 11, color: C.textSub, fontWeight: 500 }}>EK {fmt(p.ek)}</span>}
+          </div>
+          <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
+            {searching && p.category && <Badge label={p.category} color="amber" />}
+            {searching && p.brand && <Badge label={p.brand} color="blue" />}
+            {p.variants && p.variants.length > 0 && <Badge label={\`🎨 \${p.variants.length}\`} color="green" />}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+
   return (
     <div style={{ padding: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-        <div style={{ fontWeight: 800, fontSize: 22, color: C.navy }}>Produkte</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {(navCat || navBrand) && !searching && (
+            <button onClick={() => navBrand ? setNavBrand(null) : setNavCat(null)} style={{
+              background: C.blueLight, border: "none", borderRadius: 10, width: 36, height: 36,
+              fontSize: 20, color: C.sunset, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            }}>←</button>
+          )}
+          <div style={{ fontWeight: 800, fontSize: 22, color: C.navy }}>
+            {searching ? "Suche" : navBrand ? navBrand : navCat ? navCat : "Artikel"}
+          </div>
+        </div>
         <Btn small onClick={openNew}>＋ Neu</Btn>
       </div>
-      <Input placeholder="🔍 Suchen…" value={search} onChange={setSearch} />
-      <div style={{ display: "flex", gap: 8, marginBottom: 14, overflowX: "auto", paddingBottom: 4 }}>
-        {["all", ...categoryNames].map(c => (
-          <button key={c} onClick={() => setCatFilter(c)} style={{
-            flexShrink: 0, padding: "6px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
-            background: catFilter === c ? C.navy : C.surface, color: catFilter === c ? "#fff" : C.textSub,
-            border: \`1.5px solid \${catFilter === c ? C.navy : C.greyLight}\`,
-          }}>{c === "all" ? "Alle" : c}</button>
-        ))}
-      </div>
-      {filtered.length === 0 && <div style={{ textAlign: "center", color: C.textSub, marginTop: 40 }}>Noch keine Produkte</div>}
-      {filtered.map(p => (
-        <Card key={p.id} style={{ cursor: "pointer" }} >
-          <div onClick={() => openEdit(p)} style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            {p.photo
-              ? <img src={p.photo} alt="" style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
-              : <div style={{ width: 56, height: 56, borderRadius: 10, background: C.blueLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>📦</div>}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
-              {p.description && <div style={{ fontSize: 12, color: C.textSub, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.description}</div>}
-              <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "baseline", flexWrap: "wrap" }}>
-                <span style={{ fontWeight: 700, color: C.blue, fontSize: 15 }}>{fmt(p.price)}</span>
-                {p.ek != null && p.ek > 0 && (
-                  <span style={{ fontSize: 11, color: C.textSub, fontWeight: 500 }}>EK {fmt(p.ek)}</span>
-                )}
+
+      <Input placeholder="🔍 Alle Artikel durchsuchen…" value={search} onChange={setSearch} />
+
+      {/* SEARCH MODE */}
+      {searching && (
+        searchResults.length === 0
+          ? <div style={{ textAlign: "center", color: C.textSub, marginTop: 40 }}>Nichts gefunden</div>
+          : searchResults.map(ProductRow)
+      )}
+
+      {/* LEVEL 1: CATEGORIES */}
+      {!searching && !navCat && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {sortedCats.map(cat => {
+            const count = data.products.filter(p => p.category === cat).length;
+            return (
+              <div key={cat} onClick={() => setNavCat(cat)} style={{
+                background: C.surface, borderRadius: 16, padding: "18px 12px", textAlign: "center",
+                boxShadow: "0 1px 4px rgba(0,0,0,.07)", cursor: "pointer",
+              }}>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+                  <CategoryIcon name={cat} size={56} />
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: C.navy }}>{cat}</div>
+                <div style={{ fontSize: 12, color: C.textSub, marginTop: 2 }}>{count} Artikel</div>
               </div>
-              <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
-                {p.category && <Badge label={p.category} color="amber" />}
-                {p.brand && <Badge label={p.brand} color="blue" />}
-                {p.variants && p.variants.length > 0 && <Badge label={\`🎨 \${p.variants.length}\`} color="green" />}
-              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* LEVEL 2: BRANDS in category */}
+      {!searching && navCat && !navBrand && (
+        <div>
+          {sortedBrands(navCat).length === 0 && (
+            <div style={{ textAlign: "center", color: C.textSub, marginTop: 30 }}>
+              Keine Marken in „{navCat}". In Einstellungen → Kategorien & Marken ergänzen.
             </div>
-          </div>
-        </Card>
-      ))}
+          )}
+          {sortedBrands(navCat).map(brand => {
+            const count = productsIn(navCat, brand).length;
+            return (
+              <Card key={brand} style={{ cursor: "pointer" }}>
+                <div onClick={() => setNavBrand(brand)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ fontWeight: 700, fontSize: 17, letterSpacing: ".5px", color: C.navy, textTransform: "uppercase" }}>{brand}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 12, color: C.textSub }}>{count}</span>
+                    <span style={{ color: C.sunset, fontSize: 20 }}>›</span>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* LEVEL 3: PRODUCTS of brand */}
+      {!searching && navCat && navBrand && (
+        productsIn(navCat, navBrand).length === 0
+          ? <div style={{ textAlign: "center", color: C.textSub, marginTop: 30 }}>Noch keine Artikel hier. Tippe „＋ Neu".</div>
+          : [...productsIn(navCat, navBrand)].sort((a,b)=>a.name.localeCompare(b.name,"de")).map(ProductRow)
+      )}
 
       {modal && (
         <Modal title={modal === "new" ? "Neues Produkt" : "Produkt bearbeiten"} onClose={() => setModal(null)}>
@@ -691,6 +815,7 @@ function Orders({ data, setData }) {
   const [itemEk, setItemEk] = useState("");
   const [itemAgent, setItemAgent] = useState("");
   const [itemCustomer, setItemCustomer] = useState("");
+  const [itemVariant, setItemVariant] = useState(null); // selected variant image index, or null
 
   // Does the currently chosen customer come via an agent?
   const selCustomer = data.customers.find(c => c.id === form.customerId);
@@ -707,6 +832,7 @@ function Orders({ data, setData }) {
     } else {
       setItemEk(""); setItemCustomer("");
     }
+    setItemVariant(null);
   };
 
   const filtered = data.orders.filter(o => {
@@ -733,7 +859,7 @@ function Orders({ data, setData }) {
     setForm({ customerId: data.customers[0]?.id || "", date: today(), shipStatus: "ontheway", payStatus: "unpaid", paidAmount: 0, items: [], notes: "", trackingCode: "" });
     setItemProd("");
     setItemQty("1");
-    setItemEk(""); setItemAgent(""); setItemCustomer("");
+    setItemEk(""); setItemAgent(""); setItemCustomer(""); setItemVariant(null);
     setModal("new");
   };
   const openEdit = (o) => { setForm({ paidAmount: 0, ...o }); setModal(o); };
@@ -744,15 +870,17 @@ function Orders({ data, setData }) {
     const ek = parseFloat(String(itemEk).replace(",", ".")) || 0;
     const agentPrice = parseFloat(String(itemAgent).replace(",", ".")) || 0;
     const customerPrice = parseFloat(String(itemCustomer).replace(",", ".")) || 0;
+    const variantImg = (itemVariant != null && prod.variants && prod.variants[itemVariant]) ? prod.variants[itemVariant] : (prod.photo || null);
     setForm(f => ({
       ...f,
       items: [...f.items, {
         productId: prod.id, name: prod.name,
         qty: parseInt(itemQty || 1),
         ek, agentPrice, customerPrice,
+        variantImg, variantIdx: itemVariant,
       }],
     }));
-    setItemQty("1"); setItemEk(""); setItemAgent(""); setItemCustomer("");
+    setItemQty("1"); setItemEk(""); setItemAgent(""); setItemCustomer(""); setItemVariant(null);
   };
 
   const removeItem = (idx) => setForm(f => ({ ...f, items: f.items.filter((_, i) => i !== idx) }));
@@ -858,7 +986,10 @@ function Orders({ data, setData }) {
             {form.items.map((it, i) => (
               <div key={i} style={{ padding: "10px 12px", background: C.blueLight, borderRadius: 10, marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{it.qty}× {it.name}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {it.variantImg && <img src={it.variantImg} alt="" style={{ width: 38, height: 38, borderRadius: 6, objectFit: "cover" }} />}
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{it.qty}× {it.name}</div>
+                  </div>
                   <button onClick={() => removeItem(i)} style={{ background: "none", border: "none", color: C.red, fontSize: 20, cursor: "pointer", lineHeight: 1 }}>×</button>
                 </div>
                 {customerHasAgent ? (
@@ -893,6 +1024,33 @@ function Orders({ data, setData }) {
                 <option value="">— Artikel wählen —</option>
                 {data.products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </Select>
+
+              {/* Variant picker — shown when the chosen product has variants */}
+              {(() => {
+                const prod = data.products.find(p => p.id === itemProd);
+                if (!prod) return null;
+                const imgs = [...(prod.photo ? [prod.photo] : []), ...((prod.variants) || [])];
+                if (imgs.length <= 1) return null;
+                return (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: C.textSub, marginBottom: 6 }}>Variante wählen</div>
+                    <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+                      {imgs.map((img, i) => {
+                        // index 0 = main photo => variantIdx null; others => i-1
+                        const vIdx = prod.photo ? (i === 0 ? null : i - 1) : i;
+                        const selected = itemVariant === vIdx;
+                        return (
+                          <img key={i} src={img} alt="" onClick={() => setItemVariant(vIdx)} style={{
+                            width: 56, height: 56, objectFit: "cover", borderRadius: 8, flexShrink: 0, cursor: "pointer",
+                            border: selected ? \`2.5px solid \${C.sunset}\` : "2.5px solid transparent",
+                          }} />
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div style={{ display: "flex", gap: 8 }}>
                 <div style={{ flex: 1 }}><Input label="Menge" type="number" value={itemQty} onChange={setItemQty} min="1" /></div>
                 <div style={{ flex: 1 }}><Input label="EK (€)" type="number" step="0.01" value={itemEk} onChange={setItemEk} placeholder="0,00" /></div>
@@ -1326,6 +1484,19 @@ function App() {
     if (!d.nextId) d.nextId = { customer: 1, product: 1, order: 1, agent: 1 };
     if (!d.nextId.agent) d.nextId.agent = 1;
     if (!d.categories) d.categories = { ...DEFAULT_CATEGORIES };
+    // One-time refresh to the curated brand lists (v2). Keeps any custom categories the user added.
+    if (!d.catVersion || d.catVersion < 2) {
+      const merged = { ...d.categories };
+      Object.keys(DEFAULT_CATEGORIES).forEach(cat => {
+        const existing = merged[cat] || [];
+        // union of curated defaults + whatever the user already had, de-duplicated
+        const union = [...DEFAULT_CATEGORIES[cat]];
+        existing.forEach(b => { if (!union.includes(b)) union.push(b); });
+        merged[cat] = union;
+      });
+      d.categories = merged;
+      d.catVersion = 2;
+    }
     return d;
   });
 
